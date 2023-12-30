@@ -65,6 +65,9 @@ router.put("/:contactId", async (req, res, next) => {
   try {
     const { contactId } = req.params;
     const body = req.body;
+    if (Object.keys(body).length === 0) {
+      return res.status(400).send({ message: "missing fields" });
+    }
 
     const { error } = putSchema.validate(body, { abortEarly: false });
 
