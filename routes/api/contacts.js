@@ -1,7 +1,7 @@
 const express = require("express");
 
 const ContactController = require("../../controllers/contacts");
-const isValidId = require("./validateObjectId");
+const isValidId = require("../../validateObjectId");
 
 const router = express.Router();
 const jsonParser = express.json();
