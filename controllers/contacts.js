@@ -1,6 +1,7 @@
 const Contact = require("../models/contact");
 const addSchema = require("../schemas/addSchema");
 const putSchema = require("../schemas/putSchema");
+const { isValidObjectId } = require("mongoose");
 
 async function getContacts(req, res, next) {
   try {
@@ -15,6 +16,9 @@ async function getContacts(req, res, next) {
 async function getContact(req, res, next) {
   const { contactId } = req.params;
   try {
+    if (!isValidObjectId(contactId)) {
+      return res.status(404).json({ message: `${contactId} not found` });
+    }
     const contact = await Contact.findById(contactId);
 
     if (contact === null) {
@@ -23,6 +27,7 @@ async function getContact(req, res, next) {
 
     res.status(200).json(contact);
   } catch (error) {
+    console.error(error);
     next(error);
   }
 }
@@ -50,6 +55,10 @@ async function updateContact(req, res, next) {
   const body = req.body;
 
   try {
+    if (!isValidObjectId(contactId)) {
+      return res.status(404).json({ message: `${contactId} not found` });
+    }
+
     if (Object.keys(body).length === 0) {
       return res.status(400).json({ message: "missing fields" });
     }
@@ -71,6 +80,7 @@ async function updateContact(req, res, next) {
 
     res.status(200).json(updatedContact);
   } catch (error) {
+    console.error(error);
     next(error);
   }
 }
@@ -79,6 +89,10 @@ async function deleteContact(req, res, next) {
   const { contactId } = req.params;
 
   try {
+    if (!isValidObjectId(contactId)) {
+      return res.status(404).json({ message: `${contactId} not found` });
+    }
+
     const deletedContact = await Contact.findByIdAndDelete(contactId);
 
     if (deletedContact === null) {
@@ -87,6 +101,7 @@ async function deleteContact(req, res, next) {
 
     res.status(200).json({ message: "Contact deleted" });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 }
@@ -100,7 +115,11 @@ async function updateStatusContact(req, res, next) {
       return res.status(400).json({ message: "missing field favorite" });
     }
 
-    const updatedContact = await Contact.findByIdAndUpdate(contactId, body);
+    const updatedContact = await Contact.findByIdAndUpdate(
+      contactId,
+      { $set: { favorite: body.favorite } },
+      { new: true }
+    );
 
     if (updatedContact !== null) {
       res.status(200).json(updatedContact);
@@ -108,6 +127,7 @@ async function updateStatusContact(req, res, next) {
       res.status(404).json({ message: "Not found" });
     }
   } catch (error) {
+    console.error(error);
     next(error);
   }
 }
