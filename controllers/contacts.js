@@ -1,7 +1,7 @@
 const Contact = require("../models/contact");
 const addSchema = require("../schemas/addSchema");
 const putSchema = require("../schemas/putSchema");
-const { isValidObjectId } = require("mongoose");
+// const { isValidObjectId } = require("mongoose");
 
 async function getContacts(req, res, next) {
   try {
@@ -16,9 +16,9 @@ async function getContacts(req, res, next) {
 async function getContact(req, res, next) {
   const { contactId } = req.params;
   try {
-    if (!isValidObjectId(contactId)) {
-      return res.status(404).json({ message: `${contactId} not found` });
-    }
+    // if (!isValidObjectId(contactId)) {
+    //   return res.status(404).json({ message: `${contactId} not found` });
+    // }
     const contact = await Contact.findById(contactId);
 
     if (contact === null) {
@@ -55,9 +55,9 @@ async function updateContact(req, res, next) {
   const body = req.body;
 
   try {
-    if (!isValidObjectId(contactId)) {
-      return res.status(404).json({ message: `${contactId} not found` });
-    }
+    // if (!isValidObjectId(contactId)) {
+    //   return res.status(404).json({ message: `${contactId} not found` });
+    // }
 
     if (Object.keys(body).length === 0) {
       return res.status(400).json({ message: "missing fields" });
@@ -89,9 +89,9 @@ async function deleteContact(req, res, next) {
   const { contactId } = req.params;
 
   try {
-    if (!isValidObjectId(contactId)) {
-      return res.status(404).json({ message: `${contactId} not found` });
-    }
+    // if (!isValidObjectId(contactId)) {
+    //   return res.status(404).json({ message: `${contactId} not found` });
+    // }
 
     const deletedContact = await Contact.findByIdAndDelete(contactId);
 
