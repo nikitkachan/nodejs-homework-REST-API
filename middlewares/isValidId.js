@@ -1,4 +1,4 @@
-const HttpError = require("./httpError");
+const { HttpError } = require("../helpers");
 const { isValidObjectId } = require("mongoose");
 
 const isValidId = (req, res, next) => {
