@@ -1,11 +1,12 @@
-const Contact = require("../models/contact");
-const addSchema = require("../schemas/addSchema");
-const putSchema = require("../schemas/putSchema");
-// const { isValidObjectId } = require("mongoose");
+const { Contact } = require("../models/contact");
+const { HttpError } = require("../helpers");
 
 async function getContacts(req, res, next) {
   try {
-    const contacts = await Contact.find();
+    const userId = req.user.id;
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+    const contacts = await Contact.find({ owner: userId }, { skip, limit });
 
     res.status(200).json(contacts);
   } catch (error) {
@@ -14,15 +15,16 @@ async function getContacts(req, res, next) {
 }
 
 async function getContact(req, res, next) {
-  const { contactId } = req.params;
   try {
-    // if (!isValidObjectId(contactId)) {
-    //   return res.status(404).json({ message: `${contactId} not found` });
-    // }
+    const { contactId } = req.params;
+    const userId = req.user.id;
     const contact = await Contact.findById(contactId);
 
     if (contact === null) {
-      return res.status(404).json({ message: "Not found" });
+      throw HttpError(404, "Not found");
+    }
+    if (contact.owner.toString() !== userId) {
+      throw HttpError(404, "Not found");
     }
 
     res.status(200).json(contact);
@@ -33,18 +35,10 @@ async function getContact(req, res, next) {
 }
 
 async function createContact(req, res, next) {
-  const response = addSchema.validate(req.body, { abortEarly: false });
-  const body = req.body;
-
   try {
-    if (response.error) {
-      return res
-        .status(400)
-        .send(response.error.details.map((err) => err.message).join(", "));
-    } else {
-      const newContact = await Contact.create(body);
-      res.status(201).json(newContact);
-    }
+    const userId = req.user.id;
+    const newContact = await Contact.create({ ...req.body, owner: userId });
+    res.status(201).json(newContact);
   } catch (error) {
     next(error);
   }
@@ -55,19 +49,8 @@ async function updateContact(req, res, next) {
   const body = req.body;
 
   try {
-    // if (!isValidObjectId(contactId)) {
-    //   return res.status(404).json({ message: `${contactId} not found` });
-    // }
-
     if (Object.keys(body).length === 0) {
       return res.status(400).json({ message: "missing fields" });
-    }
-
-    const response = putSchema.validate(body, { abortEarly: false });
-    if (response.error) {
-      return res
-        .status(400)
-        .send(response.error.details.map((err) => err.message).join(", "));
     }
 
     const updatedContact = await Contact.findByIdAndUpdate(contactId, body, {
@@ -75,7 +58,7 @@ async function updateContact(req, res, next) {
     });
 
     if (updatedContact === null) {
-      return res.status(404).json({ message: "Not found" });
+      throw HttpError(404, "Not found");
     }
 
     res.status(200).json(updatedContact);
@@ -86,17 +69,12 @@ async function updateContact(req, res, next) {
 }
 
 async function deleteContact(req, res, next) {
-  const { contactId } = req.params;
-
   try {
-    // if (!isValidObjectId(contactId)) {
-    //   return res.status(404).json({ message: `${contactId} not found` });
-    // }
-
+    const { contactId } = req.params;
     const deletedContact = await Contact.findByIdAndDelete(contactId);
 
     if (deletedContact === null) {
-      return res.status(404).json({ message: "Not found" });
+      throw HttpError(404, "Not found");
     }
 
     res.status(200).json({ message: "Contact deleted" });
@@ -107,10 +85,10 @@ async function deleteContact(req, res, next) {
 }
 
 async function updateStatusContact(req, res, next) {
-  const { contactId } = req.params;
-  const body = req.body;
-
   try {
+    const { contactId } = req.params;
+    const body = req.body;
+
     if (!body || typeof body.favorite === "undefined") {
       return res.status(400).json({ message: "missing field favorite" });
     }
@@ -124,7 +102,7 @@ async function updateStatusContact(req, res, next) {
     if (updatedContact !== null) {
       res.status(200).json(updatedContact);
     } else {
-      res.status(404).json({ message: "Not found" });
+      throw HttpError(404, "Not found");
     }
   } catch (error) {
     console.error(error);
