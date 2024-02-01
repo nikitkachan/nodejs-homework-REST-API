@@ -4,9 +4,9 @@ const { HttpError } = require("../helpers");
 async function getContacts(req, res, next) {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
-    const contacts = await Contact.find({ owner: userId }, { skip, limit });
+    // const { page = 1, limit = 10 } = req.query;
+    // const skip = (page - 1) * limit;
+    const contacts = await Contact.find({ owner: userId });
 
     res.status(200).json(contacts);
   } catch (error) {
