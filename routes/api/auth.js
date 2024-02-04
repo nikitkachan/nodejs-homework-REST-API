@@ -23,6 +23,12 @@ router.post(
 );
 router.post("/logout", auth, AuthController.logout);
 router.get("/current", auth, AuthController.getCurrent);
+router.get("/verify/:verificationToken", AuthController.verify);
+router.post(
+  "/verify",
+  validateBody(schemas.secondTryVerifySchema),
+  AuthController.secondTryVerify
+);
 router.patch(
   "/avatars",
   auth,

@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt");
+const crypto = require("node:crypto");
 const jwt = require("jsonwebtoken");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -8,6 +9,8 @@ const Jimp = require("jimp");
 const { User } = require("../models/user");
 
 const { HttpError } = require("../helpers");
+
+const sendEmail = require("../sendEmail");
 
 const { SECRET_KEY } = process.env;
 
@@ -25,9 +28,24 @@ async function register(req, res, next) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const verificationToken = crypto.randomUUID();
+
     const avatarURL = gravatar.url(email);
 
-    await User.create({ ...req.body, password: passwordHash, avatarURL });
+    await sendEmail({
+      to: email,
+      from: "info@strap.com.ua",
+      subject: "Welcome to ContactsApp",
+      html: `To confirm your registration please click on the <a href="http://localhost:3000/api/users/verify/${verificationToken}">link</a>`,
+      text: `To confirm your registration please open the link http://localhost:3000/api/users/verify/${verificationToken}`,
+    });
+
+    await User.create({
+      ...req.body,
+      password: passwordHash,
+      avatarURL,
+      verificationToken,
+    });
 
     res.status(201).json({
       user: {
@@ -54,6 +72,10 @@ async function login(req, res, next) {
 
     if (isMatch === false) {
       throw HttpError(401, "Email or password is wrong");
+    }
+
+    if (user.verify === false) {
+      throw HttpError(401, "Your account is not verified");
     }
 
     const token = jwt.sign({ id: user._id }, SECRET_KEY, { expiresIn: "23h" });
@@ -96,7 +118,7 @@ async function getCurrent(req, res, next) {
   }
 }
 
-const updateAvatar = async (req, res, next) => {
+async function updateAvatar(req, res, next) {
   try {
     const { _id } = req.user;
     const { path: tempUpload, originalname } = req.file;
@@ -117,6 +139,73 @@ const updateAvatar = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+}
 
-module.exports = { register, login, logout, getCurrent, updateAvatar };
+async function verify(req, res, next) {
+  const { verificationToken } = req.params;
+
+  try {
+    const user = await User.findOne({ verificationToken });
+
+    if (user === null) {
+      throw HttpError(404, "User not found");
+    }
+
+    await User.findByIdAndUpdate(user._id, {
+      verify: true,
+      verificationToken: null,
+    });
+
+    res.status(200).json({
+      message: "Verification successful",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function secondTryVerify(req, res, next) {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (user === null) {
+      throw HttpError(404, "User not found");
+    }
+
+    if (user.verify === true) {
+      throw HttpError(400, "Verification has already been passed");
+    }
+
+    const verificationToken = crypto.randomUUID();
+
+    await sendEmail({
+      to: email,
+      from: "info@strap.com.ua",
+      subject: "Welcome to ContactsApp",
+      html: `To confirm your registration please click on the <a href="http://localhost:3000/api/users/verify/${verificationToken}">link</a>`,
+      text: `To confirm your registration please open the link http://localhost:3000/api/users/verify/${verificationToken}`,
+    });
+
+    await User.findByIdAndUpdate(user._id, {
+      verificationToken,
+    });
+
+    res.status(200).json({
+      message: "Verification email sent",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  register,
+  login,
+  logout,
+  getCurrent,
+  updateAvatar,
+  verify,
+  secondTryVerify,
+};
